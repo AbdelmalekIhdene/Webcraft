@@ -1,11 +1,12 @@
 #include "main.hpp"
-#include "shaderManager.hpp"
+#include "ShaderManager.hpp"
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <SDL.h>
 #include <SDL_opengles2.h>
-using namespace std;
+#include <string>
+#include <vector>
 
 void assertFatal(bool condition, char const *format, ...) {
 	if(condition == true) return;
@@ -56,10 +57,13 @@ void Application::initialise(int windowWidth, int windowHeight) {
 }
 
 void Application::initialiseShaders() {
-	shaderMan.appendShader(GL_VERTEX_SHADER, "shaders/basic.vert");
-	shaderMan.appendShader(GL_FRAGMENT_SHADER, "shaders/basic.frag");
-	shaderMan.appendProgram(2, shaderMan.shaders[0], shaderMan.shaders[1]);
-	shaderMan.deleteShaders();
+	std::vector<Shader> const shaders = {
+		ShaderManager::createShader("basicVert", GL_VERTEX_SHADER, "shaders/basic.vert"),
+		ShaderManager::createShader("basicFrag", GL_FRAGMENT_SHADER, "shaders/basic.frag")
+	};
+	shaderMan.appendProgram(
+	"basicProgram", {shaders[0], shaders[1]}, {{0, "position"}});
+	for(auto s : shaders) s.deleteShader();
 }
 
 void Application::pollEvents() {
@@ -80,6 +84,15 @@ void Application::pollEvents() {
 }
 
 void Application::render() {
+	GLfloat const vertices[] = {
+		0.0, 0.5, 0.0,
+		-0.5, -0.5, 0.0,
+		0.5, -0.5, 0.0
+	};
+	shaderMan.programs[0].useProgram();
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+	glEnableVertexAttribArray(0);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
 	SDL_GL_SwapWindow(window);
 }
 
@@ -104,7 +117,6 @@ int main(int argc, char const *argv[]) {
 			application.currentTime += updateStep;
 			application.update();
 		}
-
 		glClear(GL_COLOR_BUFFER_BIT);
 		application.render();
 	}

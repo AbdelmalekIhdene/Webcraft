@@ -1,7 +1,6 @@
 #pragma once
-#include "shaderManager.hpp"
+#include "ShaderManager.hpp"
 #include <SDL.h>
-using namespace std;
 
 class Application {
 public:
