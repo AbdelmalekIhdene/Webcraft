@@ -1,12 +1,13 @@
 #include "main.hpp"
-
+#include "shaderManager.hpp"
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 #include <SDL.h>
 #include <SDL_opengles2.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+using namespace std;
 
-void Application::assertFatal(bool condition, char const *format, ...) {
+void assertFatal(bool condition, char const *format, ...) {
 	if(condition == true) return;
 	va_list arguments;
 	va_start(arguments, format);
@@ -14,6 +15,8 @@ void Application::assertFatal(bool condition, char const *format, ...) {
 	va_end(arguments);
 	exit(EXIT_FAILURE);
 }
+
+// char *readFile(char const *path);
 
 Application::~Application() {
 	SDL_GL_DeleteContext(glContext);
@@ -33,21 +36,30 @@ void Application::handleKeyupEvent(SDL_Keycode sym) {
 	return;
 }
 
-void Application::initialise() {
+void Application::initialise(int windowWidth, int windowHeight) {
 	assertFatal(SDL_Init(SDL_INIT_VIDEO) == 0,
-	"Could not initialise SDL: %s\n", SDL_GetError());
+	"[SDL Initialisation] %s\n", SDL_GetError());
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	window = SDL_CreateWindow("Webcraft", SDL_WINDOWPOS_UNDEFINED,
-	SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight,
+	SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	assertFatal(window != NULL,
-	"Could not initialise SDL window: %s\n", SDL_GetError());
+	"[SDL Window Initialisation] %s\n", SDL_GetError());
 	glContext = SDL_GL_CreateContext(window);
 	SDL_GL_SetSwapInterval(0);
 	glClearColor(0, 0, 0, 1);
 	currentTick = SDL_GetPerformanceCounter();
+	initialiseShaders();
+}
+
+void Application::initialiseShaders() {
+	shaderMan.appendShader(GL_VERTEX_SHADER, "shaders/basic.vert");
+	shaderMan.appendShader(GL_FRAGMENT_SHADER, "shaders/basic.frag");
+	shaderMan.appendProgram(2, shaderMan.shaders[0], shaderMan.shaders[1]);
+	shaderMan.deleteShaders();
 }
 
 void Application::pollEvents() {
@@ -72,13 +84,14 @@ void Application::render() {
 }
 
 void Application::update() {
-	printf("%lf\n", currentTime);
+	// printf("%lf\n", currentTime);
 }
 
 int main(int argc, char const *argv[]) {
 	Application application;
-	application.initialise();
+	application.initialise(640, 480);
 	double const tickFrequency = SDL_GetPerformanceFrequency();
+	double const updateStep = 1.0 / 20.0;
 	while(application.running) {
 		application.pollEvents();
 		Uint64 const newTick = SDL_GetPerformanceCounter();
@@ -86,9 +99,9 @@ int main(int argc, char const *argv[]) {
 		(double) (newTick - application.currentTick) / tickFrequency;
 		application.accumulator += deltaTime;
 		application.currentTick = newTick;
-		while(application.accumulator > application.UPDATE_STEP) {
-			application.accumulator -= application.UPDATE_STEP;
-			application.currentTime += application.UPDATE_STEP;
+		while(application.accumulator > updateStep) {
+			application.accumulator -= updateStep;
+			application.currentTime += updateStep;
 			application.update();
 		}
 
